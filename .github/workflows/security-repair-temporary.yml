@@ -1,0 +1,39 @@
+name: Security dependency repair (temporary)
+on:
+  push:
+    branches: [security/github-audit-2026-10-23]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - name: Update lockfile, audit, and verify application
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+          npm ci --no-fund
+          npm run build --if-present
+          npm test --if-present
+          npm audit --json > /tmp/security-audit.json || true
+          node - <<'NODE'
+          const audit = require('/tmp/security-audit.json')
+          console.log('SECURITY_SUMMARY', JSON.stringify(audit.metadata?.vulnerabilities || {}))
+          for (const [name, value] of Object.entries(audit.vulnerabilities || {})) {
+            console.log('SECURITY_FINDING', JSON.stringify({name,severity:value.severity,range:value.range,fixAvailable:value.fixAvailable,via:value.via.filter(v=>typeof v==='object').map(v=>v.title)}))
+          }
+          NODE
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'security: resolve compatible transitive advisories'
+            git push origin HEAD:security/github-audit-2026-10-23
+          fi
