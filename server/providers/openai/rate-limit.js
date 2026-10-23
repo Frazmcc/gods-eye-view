@@ -7,7 +7,7 @@ import { makeOptInRateLimiter, clientKey } from '../common/rate-limit.js';
 // the result is cached so the limiter's per-IP window state persists. `null` = unlimited (default).
 let _openAiRateLimiter;
 
-/** OpenAI cost endpoints (realtime/token + hud-summary). Null = unlimited (default). */
+/** OpenAI cost endpoints (realtime/token + hud-summary), limited by default. */
 function openAiRateLimiter() {
   if (_openAiRateLimiter === undefined)
     _openAiRateLimiter = makeOptInRateLimiter(
@@ -27,7 +27,7 @@ function openAiRateLimiter() {
  * @returns {boolean} True if the request may proceed; false if a 429 was sent.
  */
 function enforceOptInRateLimit(limiter, req, res) {
-  if (!limiter) return true; // unlimited (default) — no behavior change
+  if (!limiter) { res.statusCode=503; res.end('Rate limit not configured'); return false; }
   if (limiter(clientKey(req))) return true;
   res.statusCode = 429;
   res.setHeader('Content-Type', 'application/json');
