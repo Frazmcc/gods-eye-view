@@ -27,7 +27,11 @@ function openAiRateLimiter() {
  * @returns {boolean} True if the request may proceed; false if a 429 was sent.
  */
 function enforceOptInRateLimit(limiter, req, res) {
-  if (!limiter) { res.statusCode=503; res.end('Rate limit not configured'); return false; }
+  if (!limiter) {
+    res.statusCode = 503;
+    res.end('Rate limit not configured');
+    return false;
+  }
   if (limiter(clientKey(req))) return true;
   res.statusCode = 429;
   res.setHeader('Content-Type', 'application/json');
