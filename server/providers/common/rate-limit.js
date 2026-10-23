@@ -2,20 +2,22 @@ import { makeRateLimiter } from '../../../src/sources/rateLimit.js';
 export { makeRateLimiter } from '../../../src/sources/rateLimit.js';
 
 /**
- * Opt-in per-IP rate limiter for the cost-bearing API proxies (OpenAI / Google).
- * DEFAULT IS UNLIMITED: when the env var is unset, `0`, or non-numeric, this
- * returns `null` and the caller skips the check entirely — a runtime no-op that
- * preserves the original behavior. Only a positive integer N enables a fixed
- * 60s window of N requests/IP (built lazily once, then reused so its per-IP
- * window state persists across requests). The global backstop is set to a
- * generous multiple of the per-IP cap so a single host can't starve the rest.
+ * Per-IP rate limiter for the cost-bearing API proxies (OpenAI / Google).
+ * DEFAULT IS BOUNDED: when the env var is unset, `0`, or invalid, enforce
+ * eight requests per minute per socket peer. Operators may configure a positive
+ * per-IP limit up to 120. The limiter is created lazily and reused; a global
+ * backstop prevents aggregate cost blowups.
  *
  * @param {string|undefined} envValue - Raw env value (requests/min/IP).
  * @returns {((key:string)=>boolean)|null} An `allow(key)` fn, or null when unlimited.
  */
 export function makeOptInRateLimiter(envValue) {
-  const max = Number(envValue);
-  if (!Number.isFinite(max) || max <= 0) return null; // unset/0/garbage -> unlimited
+  const configured = Number(envValue);
+  // Fail safe: missing, zero or invalid settings cannot disable protection on
+  // endpoints that spend API credits. Operators may raise the rate as needed.
+  const max = Number.isSafeInteger(configured) && configured > 0
+    ? Math.min(configured, 120)
+    : 8;
   return makeRateLimiter({
     windowMs: 60_000,
     max: Math.floor(max),
