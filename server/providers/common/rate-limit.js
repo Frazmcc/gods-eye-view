@@ -15,9 +15,10 @@ export function makeOptInRateLimiter(envValue) {
   const configured = Number(envValue);
   // Fail safe: missing, zero or invalid settings cannot disable protection on
   // endpoints that spend API credits. Operators may raise the rate as needed.
-  const max = Number.isSafeInteger(configured) && configured > 0
-    ? Math.min(configured, 120)
-    : 120;
+  const max =
+    Number.isSafeInteger(configured) && configured > 0
+      ? Math.min(configured, 120)
+      : 120;
   return makeRateLimiter({
     windowMs: 60_000,
     max: Math.floor(max),
