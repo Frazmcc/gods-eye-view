@@ -1,0 +1,22 @@
+name: Dependency security, build and regression tests
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+          cache: npm
+      - run: npm ci --no-fund
+      - run: npm run build --if-present
+      - run: npm test --if-present
+      - run: npm audit --audit-level=low
