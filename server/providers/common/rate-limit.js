@@ -4,7 +4,7 @@ export { makeRateLimiter } from '../../../src/sources/rateLimit.js';
 /**
  * Per-IP rate limiter for the cost-bearing API proxies (OpenAI / Google).
  * DEFAULT IS BOUNDED: when the env var is unset, `0`, or invalid, enforce
- * eight requests per minute per socket peer. Operators may configure a positive
+ * 120 requests per minute per socket peer (OpenAI overrides this to eight). Operators may configure a positive
  * per-IP limit up to 120. The limiter is created lazily and reused; a global
  * backstop prevents aggregate cost blowups.
  *
@@ -17,7 +17,7 @@ export function makeOptInRateLimiter(envValue) {
   // endpoints that spend API credits. Operators may raise the rate as needed.
   const max = Number.isSafeInteger(configured) && configured > 0
     ? Math.min(configured, 120)
-    : 8;
+    : 120;
   return makeRateLimiter({
     windowMs: 60_000,
     max: Math.floor(max),
